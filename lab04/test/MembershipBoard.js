@@ -57,10 +57,35 @@ describe("MembershipBoard", function () {
         await board.batchAddMembers(batch);
       }
 
-      expect(await board.members(allMembers[0])).to.equal(true);
-      expect(await board.members(allMembers[999])).to.equal(true);
+      // Spec: "All 1,000 members are correctly stored after batch add"
+      const stored = await Promise.all(allMembers.map((addr) => board.members(addr)));
+      stored.forEach((isMember, idx) => {
+        expect(isMember, `member ${idx} (${allMembers[idx]}) was not stored`).to.equal(true);
+      });
+      expect(stored.filter(Boolean).length).to.equal(1000);
     });
-    
+
+    it("Question 4: per-member gas across batch sizes (50/100/250/500)", async function () {
+      this.timeout(120000);
+      const allMembers = membersArray.slice(0, 1000);
+      const sizes = [50, 100, 250, 500];
+      console.log("\n    ➡️ Batch-size experiment (full-tx gas incl. 21,000 intrinsic per tx):");
+      for (const size of sizes) {
+        const Factory = await ethers.getContractFactory("MembershipBoard");
+        const freshBoard = await Factory.deploy();
+        let totalGas = 0n;
+        for (let i = 0; i < allMembers.length; i += size) {
+          const batch = allMembers.slice(i, i + size);
+          const receipt = await (await freshBoard.batchAddMembers(batch)).wait();
+          totalGas += receipt.gasUsed;
+        }
+        const perMember = totalGas / BigInt(allMembers.length);
+        console.log(
+          `       size ${String(size).padStart(3)} → total ${totalGas.toString()} gas | per-member ~${perMember.toString()}`
+        );
+      }
+    });
+
   });
 
 

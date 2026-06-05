@@ -16,7 +16,7 @@
 | Action | Gas Used |
 | :--- | :--- |
 | `addMember` (single call) | 47,859 |
-| `addMember` x1000 (total estimated) | ~ 47,859,000 |
+| `addMember` x1000 (total estimated) | ~ 68,859,000 |
 | `batchAddMembers` (all 1,000 split into 4 batches) | ~ 24,542,816 (Avg 6,135,704 per batch) |
 | `setMerkleRoot` | 47,570 |
 | `verifyMemberByMapping` | 24,337 |
@@ -29,7 +29,7 @@
 ### 1. Storage cost comparison
 **Q: What is the total gas cost of registering all 1,000 members for each of the three approaches (`addMember` x1000, `batchAddMembers`, `setMerkleRoot`)? Which is cheapest and why?**
 
-* **`addMember` x1000**: ~ 47.85 million gas.
+* **`addMember` x1000**: ~ 68.86 million gas — `(47,859 execution + 21,000 base tx) × 1,000`. The 21,000 intrinsic cost per transaction must be added because the gas-reporter figure (47,859) is execution-only.
 * **`batchAddMembers`**: ~ 24.54 million gas.
 * **`setMerkleRoot`**: **47,570 gas.**
 
@@ -56,12 +56,14 @@
 **Q: Try different batch sizes for `batchAddMembers` (e.g., 50, 100, 250, 500). How does the per-member gas cost change with batch size? Is there a sweet spot?**
 experiment results are shown below:
 
-| Batch Size | Total Gas Used | Per-Member Gas Cost |
+| Batch Size | Total Gas (all 1,000) | Per-Member Gas Cost |
 | :--- | :--- | :--- |
-| **50** | 1,246,520 | ~ 24,930 |
-| **100** | 2,468,816 | ~ 24,688 |
-| **250** | 6,135,704 | ~ 24,543 |
-| **500** | 12,247,196 | ~ 24,494 |
+| **50** | 24,930,400 | ~ 24,930 |
+| **100** | 24,688,160 | ~ 24,688 |
+| **250** | 24,542,816 | ~ 24,542 |
+| **500** | 24,494,392 | ~ 24,494 |
+
+> **Reproducible:** the **"Question 4"** test in `test/MembershipBoard.js` deploys a fresh contract per batch size, adds all 1,000 members, and prints these totals (full-tx gas incl. the 21,000 intrinsic per tx). Run `npx hardhat test`.
 
 * **How it changes:** As the batch size increases, the **per-member gas cost decreases**. This happens because the base transaction fee and the function call overhead are shared across more members in a single transaction.
 * **The Sweet Spot:** The sweet spot is  500 members. Larger batches will have lower per-member costs, but I discovered that 1,000 members in a single batch causes the transaction to revert with a `transaction gas limit is greater than the cap` error. Therefore, 500 is the ideal number.
